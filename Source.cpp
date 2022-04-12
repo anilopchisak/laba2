@@ -4,87 +4,70 @@
 #include <glm/glm.hpp>	//#include "math_3d.h" - vector
 
 GLuint VBO; // a global variable for storing a pointer to the vertex buffer
+static float x = 0; static float y = 0; float scale_x = 0.001; float scale_y = 0.001;
+GLuint gWorldLocation;
 
-//static float Scale = 0.0f;
-static float x; static float y;
+static const char* vertex = R"(
+	#version 330 core
+	layout (location = 0) in vec3 Pos;
+	out vec4 vertexColor;
+	uniform mat4 gWorld;
+	void main()
+	{
+		gl_Position = gWorld * vec4(Pos.x, Pos.y, Pos.z, 1.0);
+		vertexColor = vec4(0.0, 1.0, 1.0, 1.0);
+	})";
+static const char* fragment = R"(
+	#version 330 core
+	out vec4 FragColor;
+	in vec4 vertexColor;
+	void main()
+	{
+		FragColor = vertexColor;
+	})";
 
-//glm::vec3 Vertices[3]
-//{
-//	{-0.5f, -0.5f, 0.0f},
-//	{0.5f, -0.5f, 0.0f},
-//	{0.5f, -0.5f, 0.0f}
-//};
-//
-//glm::mat4 WorldM =
-//{
-//{1.0f, 0.0f, 0.0f, x},
-//{0.0f, 1.0f, 0.0f, y},
-//{0.0f, 0.0f, 1.0f, 0.0f},
-//{0.0f, 0.0f, 0.0f, 1.0f}
-//};
-
-void RenderSceneCB() //draw
+void createShaders(const char* ShaderText_v, const char* ShaderText_f)
 {
-	// creating shaders
-
+	GLint success; 	GLchar InfoLog[1024];
 	GLuint ShaderProgram = glCreateProgram();
-	GLint success;
-	GLchar InfoLog[1024];
+
 
 	// vertex shader 
-	GLuint ShaderObj_vert = glCreateShader(GL_VERTEX_SHADER);
+	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
 
 	const GLchar* vertexShaderSource[1];
-	vertexShaderSource[0] = "#version 330 core\n"
-		// координатные переменные в атрибуте идут первыми среди всех остальных данных, 
-		// поэтому указываем для них location = 0
-		"layout (location = 0) in vec3 Pos;\n"
-		// определяем выходную переменную, задающую цвет, 
-		// которую затем отправим во фрагментный шейдер
-		"out vec4 vertexColor;\n"
-		"uniform float gScale;\n"
-		"void main()\n"
-		"{\n"
-		// * 0.5 - уменьшает иходный размер треугольника
-		//"   gl_Position = vec4(0.5 * Pos.x, 0.5 * Pos.y, Pos.z, 1.0);\n"
-		"	gl_Position = vec4(gScale * Pos.x, gScale * Pos.y, Pos.z, 1.0);"
-		"   vertexColor = vec4(0.0, 1.0, 1.0, 1.0);\n" // цвет фигуры
-		"}\0";
-	glShaderSource(ShaderObj_vert, 1, vertexShaderSource, NULL);
-	glCompileShader(ShaderObj_vert);
+	vertexShaderSource[0] = ShaderText_v;
+	glShaderSource(vertexShader, 1, vertexShaderSource, NULL);
+	glCompileShader(vertexShader);
 
 	// Проверка на наличие ошибок компилирования вершинного шейдера
-	glGetShaderiv(ShaderObj_vert, GL_COMPILE_STATUS, &success);
+	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
 	if (!success)
 	{
-		glGetShaderInfoLog(ShaderObj_vert, sizeof(InfoLog), NULL, InfoLog);
+		glGetShaderInfoLog(vertexShader, sizeof(InfoLog), NULL, InfoLog);
 		fprintf(stderr, "Error compiling shader type %d: '%s'\n", GL_VERTEX_SHADER, InfoLog);
 	}
 
+
 	// fragment shader
-	GLuint ShaderObj_frag = glCreateShader(GL_FRAGMENT_SHADER);
+	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
 	const GLchar* fragmentShaderSource[1];
-	fragmentShaderSource[0] = "#version 330 core\n"
-		"out vec4 FragColor;\n"
-		"in vec4 vertexColor;\n" // входная переменная из вершинного шейдера
-		"void main()\n"
-		"{\n"
-		"   FragColor = vertexColor;\n"
-		"}\n\0";
-	glShaderSource(ShaderObj_frag, 1, fragmentShaderSource, NULL);
-	glCompileShader(ShaderObj_frag);
+	fragmentShaderSource[0] = ShaderText_f;
+	glShaderSource(fragmentShader, 1, fragmentShaderSource, NULL);
+	glCompileShader(fragmentShader);
 
-	glGetShaderiv(ShaderObj_frag, GL_COMPILE_STATUS, &success);
+	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
 	if (!success)
 	{
-		glGetShaderInfoLog(ShaderObj_frag, sizeof(InfoLog), NULL, InfoLog);
+		glGetShaderInfoLog(fragmentShader, sizeof(InfoLog), NULL, InfoLog);
 		fprintf(stderr, "Error compiling shader type %d: '%s'\n", GL_FRAGMENT_SHADER, InfoLog);
 	}
 
+
 	// Связывание шейдеров
-	glAttachShader(ShaderProgram, ShaderObj_vert);
-	glAttachShader(ShaderProgram, ShaderObj_frag);
+	glAttachShader(ShaderProgram, vertexShader);
+	glAttachShader(ShaderProgram, fragmentShader);
 	glLinkProgram(ShaderProgram);
 	// Проверка на наличие ошибок связывания шейдеров
 	glGetProgramiv(ShaderProgram, GL_LINK_STATUS, &success);
@@ -94,15 +77,24 @@ void RenderSceneCB() //draw
 		fprintf(stderr, "Error linking shader program: '%s'\n", InfoLog);
 	}
 
-	GLint gScaleLocation = glGetUniformLocation(ShaderProgram, "gScale");
-	assert(gScaleLocation != 0xFFFFFFFF);
-
 	glUseProgram(ShaderProgram);
 
-	static float Scale = 0.0f;
-	Scale += 0.001f;
-	glUniform1f(gScaleLocation, sinf(Scale));
+	gWorldLocation = glGetUniformLocation(ShaderProgram, "gWorld");
+	assert(gWorldLocation != 0xFFFFFFFF);
+}
+
+void RenderSceneCB() //draw
+{
+	glm::mat4 WorldM;
+	WorldM[0][0] = 1.0f; WorldM[0][1] = 0.0f; WorldM[0][2] = 0.0f; WorldM[0][3] = x;
+	WorldM[1][0] = 0.0f; WorldM[1][1] = 1.0f; WorldM[1][2] = 0.0f; WorldM[1][3] = y;
+	WorldM[2][0] = 0.0f; WorldM[2][1] = 0.0f; WorldM[2][2] = 1.0f; WorldM[2][3] = 0.0f;
+	WorldM[3][0] = 0.0f; WorldM[3][1] = 0.0f; WorldM[3][2] = 0.0f; WorldM[3][3] = 1.0f;
 	
+	if (x >= 1 || x <= -1) scale_x *= -1; if (y >= 1 || y <= -1) scale_y *= -1;
+	x += scale_x; y += scale_y;
+
+	glUniformMatrix4fv(gWorldLocation, 1, GL_TRUE, &WorldM[0][0]);
 
 
 	// Рендеринг
@@ -110,11 +102,9 @@ void RenderSceneCB() //draw
 	glClear(GL_COLOR_BUFFER_BIT); //clearing the frame buffer using the color specified above
 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO); // Bind (привязывать) the buffer, prepare it for rendering
-
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); // data inside the buffer (index, 
 	glEnableVertexAttribArray(0); // Enable or disable the shared (общий) array of vertex attributes
 
-	//glDrawArrays(GL_POINTS, 0, 1);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 
 	glDisableVertexAttribArray(0);
@@ -137,6 +127,8 @@ int main(int argc, char** argv)
 	glutCreateWindow("Tutorial 01"); //create the window and give it a title
 	glClearColor(1.0f, 0.0f, 1.0f, 0.0f); //setting the color of the window
 
+	glutDisplayFunc(RenderSceneCB); //GLUT interacts with window system
+	glutIdleFunc(RenderSceneCB);
 
 	//initialize GLEW and check for errors
 	GLenum res = glewInit();
@@ -147,114 +139,10 @@ int main(int argc, char** argv)
 	}
 
 
-	//glm::vec3 Vertices[1]; //arrays of
-	//Vertices[0] = glm::vec3(0.0f, 0.0f, 0.0f);
-
 	glm::vec3 Vertices[3]; //increased the array so that it could contain 3 vertices.
 	Vertices[0] = glm::vec3(-0.5f, -0.5f, 0.0f); // down left
 	Vertices[1] = glm::vec3(0.5f, -0.5f, 0.0f); // down right
 	Vertices[2] = glm::vec3(0.0f, 0.5f, 0.0f); // up
-
-	glm::mat4 WorldM;
-	WorldM[0][0] = 1.0f; WorldM[0][1] = 0.0f; WorldM[0][2] = 0.0f; WorldM[0][3] = x;
-	WorldM[1][0] = 0.0f; WorldM[1][1] = 1.0f; WorldM[1][2] = 0.0f; WorldM[1][3] = y;
-	WorldM[2][0] = 0.0f; WorldM[2][1] = 0.0f; WorldM[2][2] = 1.0f; WorldM[2][3] = 0.0f;
-	WorldM[3][0] = 0.0f; WorldM[3][1] = 0.0f; WorldM[3][2] = 0.0f; WorldM[3][3] = 1.0f;
-
-
-	//glm::vec3 Vertices[3]
-	//{
-	//	{-0.5f, -0.5f, 0.0f},
-	//	{0.5f, -0.5f, 0.0f},
-	//	{0.5f, -0.5f, 0.0f}
-	//};
-
-	//glm::mat4 WorldM = {
-	//{1.0f, 0.0f, 0.0f, x},
-	//{0.0f, 1.0f, 0.0f, y},
-	//{0.0f, 0.0f, 1.0f, 0.0f},
-	//{0.0f, 0.0f, 0.0f, 1.0f}
-	//};
-
-	/*
-		// creating shaders
-
-	GLuint ShaderProgram = glCreateProgram();
-	GLint success;
-	GLchar InfoLog[1024];
-
-	// vertex shader 
-	GLuint ShaderObj_vert = glCreateShader(GL_VERTEX_SHADER);
-
-	const GLchar* vertexShaderSource[1];
-	vertexShaderSource[0] = "#version 330 core\n"
-		// координатные переменные в атрибуте идут первыми среди всех остальных данных, 
-		// поэтому указываем для них location = 0
-		"layout (location = 0) in vec3 Pos;\n"
-		// определяем выходную переменную, задающую цвет, 
-		// которую затем отправим во фрагментный шейдер
-		"out vec4 vertexColor;\n"
-		"uniform float gScale;\n"
-		"void main()\n"
-		"{\n"
-		// * 0.5 - уменьшает иходный размер треугольника
-		//"   gl_Position = vec4(0.5 * Pos.x, 0.5 * Pos.y, Pos.z, 1.0);\n"
-		"	gl_Position = vec4(gScale * Pos.x, gScale * Pos.y, Pos.z, 1.0);"
-		"   vertexColor = vec4(0.0, 1.0, 1.0, 1.0);\n" // цвет фигуры
-		"}\0";
-	glShaderSource(ShaderObj_vert, 1, vertexShaderSource, NULL);
-	glCompileShader(ShaderObj_vert);
-
-	// Проверка на наличие ошибок компилирования вершинного шейдера
-	glGetShaderiv(ShaderObj_vert, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(ShaderObj_vert, sizeof(InfoLog), NULL, InfoLog);
-		fprintf(stderr, "Error compiling shader type %d: '%s'\n", GL_VERTEX_SHADER, InfoLog);
-	}
-
-	// fragment shader
-	GLuint ShaderObj_frag = glCreateShader(GL_FRAGMENT_SHADER);
-
-	const GLchar* fragmentShaderSource[1];
-	fragmentShaderSource[0] = "#version 330 core\n"
-		"out vec4 FragColor;\n"
-		"in vec4 vertexColor;\n" // входная переменная из вершинного шейдера
-		"void main()\n"
-		"{\n"
-		"   FragColor = vertexColor;\n"
-		"}\n\0";
-	glShaderSource(ShaderObj_frag, 1, fragmentShaderSource, NULL);
-	glCompileShader(ShaderObj_frag);
-
-	glGetShaderiv(ShaderObj_frag, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(ShaderObj_frag, sizeof(InfoLog), NULL, InfoLog);
-		fprintf(stderr, "Error compiling shader type %d: '%s'\n", GL_FRAGMENT_SHADER, InfoLog);
-	}
-
-	// Связывание шейдеров
-	glAttachShader(ShaderProgram, ShaderObj_vert);
-	glAttachShader(ShaderProgram, ShaderObj_frag);
-	glLinkProgram(ShaderProgram);
-	// Проверка на наличие ошибок связывания шейдеров
-	glGetProgramiv(ShaderProgram, GL_LINK_STATUS, &success);
-	if (success == 0)
-	{
-		glGetProgramInfoLog(ShaderProgram, sizeof(InfoLog), NULL, InfoLog);
-		fprintf(stderr, "Error linking shader program: '%s'\n", InfoLog);
-	}
-
-	GLint gScaleLocation = glGetUniformLocation(ShaderProgram, "gScale");
-	assert(gScaleLocation != 0xFFFFFFFF);
-
-	//glUseProgram(ShaderProgram);
-
-	//static float Scale = 0.0f;
-	//Scale += 0.001f;
-	//glUniform1f(gScaleLocation, sinf(Scale));
-	*/
 
 
 		// buffers
@@ -262,16 +150,9 @@ int main(int argc, char** argv)
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices), Vertices, GL_STATIC_DRAW);
 
-
-	glutDisplayFunc(RenderSceneCB); //GLUT interacts with window system
-	glutIdleFunc(RenderSceneCB);
-
+	createShaders(vertex, fragment);
 
 	glutMainLoop(); //transferring control to GLUT, it's waiting for events in the window
-
-	glDeleteBuffers(1, &VBO);
-	//glDeleteShader(ShaderObj_vert);
-	//glDeleteShader(ShaderObj_frag);
 
 	return 0;
 }
