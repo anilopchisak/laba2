@@ -4,7 +4,8 @@
 #include <glm/glm.hpp>	//#include "math_3d.h" - vector
 
 GLuint VBO; // a global variable for storing a pointer to the vertex buffer
-static float x = 0; static float y = 0; float scale_x = 0.001; float scale_y = 0.001;
+static float x = 0; static float y = 0; float scale_x = 0.0005; float scale_y = 0.0005;
+float Scale = 0;
 GLuint gWorldLocation;
 
 static const char* vertex = R"(
@@ -14,7 +15,7 @@ static const char* vertex = R"(
 	uniform mat4 gWorld;
 	void main()
 	{
-		gl_Position = gWorld * vec4(Pos.x, Pos.y, Pos.z, 1.0);
+		gl_Position = gWorld * vec4(0.5 * Pos.x, 0.5 * Pos.y, Pos.z, 1.0);
 		vertexColor = vec4(0.0, 1.0, 1.0, 1.0);
 	})";
 static const char* fragment = R"(
@@ -86,13 +87,15 @@ void createShaders(const char* ShaderText_v, const char* ShaderText_f)
 void RenderSceneCB() //draw
 {
 	glm::mat4 WorldM;
-	WorldM[0][0] = 1.0f; WorldM[0][1] = 0.0f; WorldM[0][2] = 0.0f; WorldM[0][3] = x;
-	WorldM[1][0] = 0.0f; WorldM[1][1] = 1.0f; WorldM[1][2] = 0.0f; WorldM[1][3] = y;
-	WorldM[2][0] = 0.0f; WorldM[2][1] = 0.0f; WorldM[2][2] = 1.0f; WorldM[2][3] = 0.0f;
-	WorldM[3][0] = 0.0f; WorldM[3][1] = 0.0f; WorldM[3][2] = 0.0f; WorldM[3][3] = 1.0f;
+	WorldM[0][0] = cosf(Scale);		WorldM[0][1] = -sinf(Scale);	WorldM[0][2] = 0.0f;	WorldM[0][3] = x;
+	WorldM[1][0] = sinf(Scale);		WorldM[1][1] = cosf(Scale);		WorldM[1][2] = 0.0f;	WorldM[1][3] = y;
+	WorldM[2][0] = 0.0f;			WorldM[2][1] = 0.0f;			WorldM[2][2] = 1.0f;	WorldM[2][3] = 0.0f;
+	WorldM[3][0] = 0.0f;			WorldM[3][1] = 0.0f;			WorldM[3][2] = 0.0f;	WorldM[3][3] = 1.0f;
 	
 	if (x >= 1 || x <= -1) scale_x *= -1; if (y >= 1 || y <= -1) scale_y *= -1;
 	x += scale_x; y += scale_y;
+
+	Scale += 0.001;
 
 	glUniformMatrix4fv(gWorldLocation, 1, GL_TRUE, &WorldM[0][0]);
 
