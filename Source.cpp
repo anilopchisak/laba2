@@ -2,10 +2,14 @@
 #include <GL/glew.h> // extensions manager
 #include <GL/freeglut.h> //GLUT - OpenGL Utility Library - API for managing the window system, as well as event handling, input/output control
 #include <glm/glm.hpp>	//#include "math_3d.h" - vector
+#define ToRadian(x) ((x) * M_PI / 180.0f)
+#define ToDegree(x) ((x) * 180.0f / M_PI)
+#include "Pipeline.h"
 
 GLuint VBO; // a global variable for storing a pointer to the vertex buffer
-static float x = 0; static float y = 0; float scale_x = 0.0005; float scale_y = 0.0005;
-float Scale = 0;
+//static float x = 0; static float y = 0; float scale_x = 0.0005; float scale_y = 0.0005;
+float Scale = 0.0f;
+
 GLuint gWorldLocation;
 
 static const char* vertex = R"(
@@ -26,6 +30,7 @@ static const char* fragment = R"(
 	{
 		FragColor = vertexColor;
 	})";
+
 
 void createShaders(const char* ShaderText_v, const char* ShaderText_f)
 {
@@ -86,48 +91,13 @@ void createShaders(const char* ShaderText_v, const char* ShaderText_f)
 
 void RenderSceneCB() //draw
 {
-	//Rotation and moving
-	/*
-	// Z
-	glm::mat4 WorldM;
-	WorldM[0][0] = cosf(Scale);		WorldM[0][1] = -sinf(Scale);	WorldM[0][2] = 0.0f;	WorldM[0][3] = x;
-	WorldM[1][0] = sinf(Scale);		WorldM[1][1] = cosf(Scale);		WorldM[1][2] = 0.0f;	WorldM[1][3] = y;
-	WorldM[2][0] = 0.0f;			WorldM[2][1] = 0.0f;			WorldM[2][2] = 1.0f;	WorldM[2][3] = 0.0f;
-	WorldM[3][0] = 0.0f;			WorldM[3][1] = 0.0f;			WorldM[3][2] = 0.0f;	WorldM[3][3] = 1.0f;
-	*/
+	Scale += 0.0005f;
 
-	/*
-	// Y
-	glm::mat4 WorldM;
-	WorldM[0][0] = cosf(Scale);		WorldM[0][1] = 0.0f;		WorldM[0][2] = -sinf(Scale);	WorldM[0][3] = x;
-	WorldM[1][0] = 0.0f;			WorldM[1][1] = 1.0f;		WorldM[1][2] = 0.0f;			WorldM[1][3] = y;
-	WorldM[2][0] = sinf(Scale);		WorldM[2][1] = 0.0f;		WorldM[2][2] = cosf(Scale);		WorldM[2][3] = 0.0f;
-	WorldM[3][0] = 0.0f;			WorldM[3][1] = 0.0f;		WorldM[3][2] = 0.0f;			WorldM[3][3] = 1.0f;
-	*/
-
-	/*
-	// X
-	glm::mat4 WorldM;
-	WorldM[0][0] = 1.0f;		WorldM[0][1] = 0.0f;			WorldM[0][2] = 0.0f;			WorldM[0][3] = x;
-	WorldM[1][0] = 0.0f;		WorldM[1][1] = cosf(Scale);		WorldM[1][2] = -sinf(Scale);	WorldM[1][3] = y;
-	WorldM[2][0] = 0.0f;		WorldM[2][1] = sinf(Scale);		WorldM[2][2] = cosf(Scale);		WorldM[2][3] = 0.0f;
-	WorldM[3][0] = 0.0f;		WorldM[3][1] = 0.0f;			WorldM[3][2] = 0.0f;			WorldM[3][3] = 1.0f;
-	*/
-	
-	// Scale
-	glm::mat4 WorldM;
-	WorldM[0][0] = sinf(Scale);		WorldM[0][1] = 0.0f;			WorldM[0][2] = 0.0f;			WorldM[0][3] = x;
-	WorldM[1][0] = 0.0f;			WorldM[1][1] = cosf(Scale);		WorldM[1][2] = 0.0f;			WorldM[1][3] = y;
-	WorldM[2][0] = 0.0f;			WorldM[2][1] = 0.0f;			WorldM[2][2] = sinf(Scale);		WorldM[2][3] = 0.0f;
-	WorldM[3][0] = 0.0f;			WorldM[3][1] = 0.0f;			WorldM[3][2] = 0.0f;			WorldM[3][3] = 1.0f;
-	
-
-	if (x >= 0.5 || x <= -0.5) scale_x *= -1; if (y >= 0.5 || y <= -0.5) scale_y *= -1;
-	x += scale_x; y += scale_y;
-
-	Scale += 0.001;
-
-	glUniformMatrix4fv(gWorldLocation, 1, GL_TRUE, &WorldM[0][0]);
+	Pipeline p;
+	p.Scale(sinf(Scale * 0.1f), sinf(Scale * 0.1f), sinf(Scale * 0.1f));
+	p.WorldPos(sinf(Scale), 0.0f, 0.0f);
+	p.Rotate(sinf(Scale) * 90.0f, sinf(Scale) * 90.0f, sinf(Scale) * 90.0f);
+	glUniformMatrix4fv(gWorldLocation, 1, GL_TRUE, (const GLfloat*)p.GetTrans());
 
 
 	// Rendering
