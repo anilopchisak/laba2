@@ -41,7 +41,7 @@ void createShaders(const char* ShaderText_v, const char* ShaderText_f)
 	glShaderSource(vertexShader, 1, vertexShaderSource, NULL);
 	glCompileShader(vertexShader);
 
-	// ѕроверка на наличие ошибок компилировани€ вершинного шейдера
+	// Checking for vertex shader compilation errors
 	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
 	if (!success)
 	{
@@ -66,11 +66,11 @@ void createShaders(const char* ShaderText_v, const char* ShaderText_f)
 	}
 
 
-	// —в€зывание шейдеров
+	// Linking Shaders
 	glAttachShader(ShaderProgram, vertexShader);
 	glAttachShader(ShaderProgram, fragmentShader);
 	glLinkProgram(ShaderProgram);
-	// ѕроверка на наличие ошибок св€зывани€ шейдеров
+	// Checking for shader binding errors
 	glGetProgramiv(ShaderProgram, GL_LINK_STATUS, &success);
 	if (success == 0)
 	{
@@ -86,13 +86,43 @@ void createShaders(const char* ShaderText_v, const char* ShaderText_f)
 
 void RenderSceneCB() //draw
 {
+	//Rotation and moving
+	/*
+	// Z
 	glm::mat4 WorldM;
 	WorldM[0][0] = cosf(Scale);		WorldM[0][1] = -sinf(Scale);	WorldM[0][2] = 0.0f;	WorldM[0][3] = x;
 	WorldM[1][0] = sinf(Scale);		WorldM[1][1] = cosf(Scale);		WorldM[1][2] = 0.0f;	WorldM[1][3] = y;
 	WorldM[2][0] = 0.0f;			WorldM[2][1] = 0.0f;			WorldM[2][2] = 1.0f;	WorldM[2][3] = 0.0f;
 	WorldM[3][0] = 0.0f;			WorldM[3][1] = 0.0f;			WorldM[3][2] = 0.0f;	WorldM[3][3] = 1.0f;
+	*/
+
+	/*
+	// Y
+	glm::mat4 WorldM;
+	WorldM[0][0] = cosf(Scale);		WorldM[0][1] = 0.0f;		WorldM[0][2] = -sinf(Scale);	WorldM[0][3] = x;
+	WorldM[1][0] = 0.0f;			WorldM[1][1] = 1.0f;		WorldM[1][2] = 0.0f;			WorldM[1][3] = y;
+	WorldM[2][0] = sinf(Scale);		WorldM[2][1] = 0.0f;		WorldM[2][2] = cosf(Scale);		WorldM[2][3] = 0.0f;
+	WorldM[3][0] = 0.0f;			WorldM[3][1] = 0.0f;		WorldM[3][2] = 0.0f;			WorldM[3][3] = 1.0f;
+	*/
+
+	/*
+	// X
+	glm::mat4 WorldM;
+	WorldM[0][0] = 1.0f;		WorldM[0][1] = 0.0f;			WorldM[0][2] = 0.0f;			WorldM[0][3] = x;
+	WorldM[1][0] = 0.0f;		WorldM[1][1] = cosf(Scale);		WorldM[1][2] = -sinf(Scale);	WorldM[1][3] = y;
+	WorldM[2][0] = 0.0f;		WorldM[2][1] = sinf(Scale);		WorldM[2][2] = cosf(Scale);		WorldM[2][3] = 0.0f;
+	WorldM[3][0] = 0.0f;		WorldM[3][1] = 0.0f;			WorldM[3][2] = 0.0f;			WorldM[3][3] = 1.0f;
+	*/
 	
-	if (x >= 1 || x <= -1) scale_x *= -1; if (y >= 1 || y <= -1) scale_y *= -1;
+	// Scale
+	glm::mat4 WorldM;
+	WorldM[0][0] = sinf(Scale);		WorldM[0][1] = 0.0f;			WorldM[0][2] = 0.0f;			WorldM[0][3] = x;
+	WorldM[1][0] = 0.0f;			WorldM[1][1] = cosf(Scale);		WorldM[1][2] = 0.0f;			WorldM[1][3] = y;
+	WorldM[2][0] = 0.0f;			WorldM[2][1] = 0.0f;			WorldM[2][2] = sinf(Scale);		WorldM[2][3] = 0.0f;
+	WorldM[3][0] = 0.0f;			WorldM[3][1] = 0.0f;			WorldM[3][2] = 0.0f;			WorldM[3][3] = 1.0f;
+	
+
+	if (x >= 0.5 || x <= -0.5) scale_x *= -1; if (y >= 0.5 || y <= -0.5) scale_y *= -1;
 	x += scale_x; y += scale_y;
 
 	Scale += 0.001;
@@ -100,20 +130,20 @@ void RenderSceneCB() //draw
 	glUniformMatrix4fv(gWorldLocation, 1, GL_TRUE, &WorldM[0][0]);
 
 
-	// –ендеринг
+	// Rendering
 
 	glClear(GL_COLOR_BUFFER_BIT); //clearing the frame buffer using the color specified above
 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO); // Bind (прив€зывать) the buffer, prepare it for rendering
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); // data inside the buffer (index, 
-	glEnableVertexAttribArray(0); // Enable or disable the shared (общий) array of vertex attributes
+	glBindBuffer(GL_ARRAY_BUFFER, VBO); // Bind the buffer, prepare it for rendering
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); // data inside the buffer
+	glEnableVertexAttribArray(0); // Enable or disable the shared array of vertex attributes
 
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 
 	glDisableVertexAttribArray(0);
 
-	// показывает, что текущее окно должно быть отрисованно заново и в течении 
-	// главного цикла GLUT функци€ рендера будет вызвана
+	// indicates that the current window should be redrawn and during operation
+	// of the main loop GLUT render function will be called
 	glutPostRedisplay(); 
 
 	glutSwapBuffers(); //swap the background buffer and the frame buffer
