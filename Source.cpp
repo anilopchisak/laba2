@@ -3,6 +3,8 @@
 #include <GL/freeglut.h> //GLUT - OpenGL Utility Library - API for managing the window system, as well as event handling, input/output control
 #include <glm/glm.hpp>	//#include "math_3d.h" - vector
 #include "Pipeline.h"
+#include "Mat4.h"
+#include "Vec3.cpp"
 
 GLuint VBO; // a global variable for storing a pointer to the vertex buffer
 GLuint IBO;
@@ -101,6 +103,10 @@ void RenderSceneCB() //draw
 	p.Scale(0.1f, 0.1f, 0.1f);
 	p.WorldPos(0.0f, sinf(Scale * 0.1f), sinf(Scale * 0.1f));
 	p.Rotate(Scale, Scale, Scale);
+	Vec3 CameraPos(0.0f, 0.0f, -3.0f);
+	Vec3 CameraTarget(0.0f, 0.0f, 2.0f);
+	Vec3 CameraUp(0.0f, 1.0f, 0.0f);
+	p.SetCamera(CameraPos, CameraTarget, CameraUp);
 
 	p.SetPerspectiveProj(30.0f, WINDOW_WIDTH, WINDOW_HEIGHT, 1.0f, 1000.0f);
 	glUniformMatrix4fv(gWorldLocation, 1, GL_TRUE, (const GLfloat*)p.GetTrans());
