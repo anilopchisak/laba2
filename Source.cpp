@@ -2,15 +2,15 @@
 #include <GL/glew.h> // extensions manager
 #include <GL/freeglut.h> //GLUT - OpenGL Utility Library - API for managing the window system, as well as event handling, input/output control
 #include <glm/glm.hpp>	//#include "math_3d.h" - vector
-#define ToRadian(x) ((x) * M_PI / 180.0f)
-#define ToDegree(x) ((x) * 180.0f / M_PI)
 #include "Pipeline.h"
 
 GLuint VBO; // a global variable for storing a pointer to the vertex buffer
-//static float x = 0; static float y = 0; float scale_x = 0.0005; float scale_y = 0.0005;
+GLuint IBO;
+GLuint gWorldLocation;
 float Scale = 0.0f;
 
-GLuint gWorldLocation;
+#define WINDOW_WIDTH 1980
+#define WINDOW_HEIGHT 1250
 
 static const char* vertex = R"(
 	#version 330 core
@@ -20,7 +20,7 @@ static const char* vertex = R"(
 	void main()
 	{
 		gl_Position = gWorld * vec4(0.5 * Pos.x, 0.5 * Pos.y, Pos.z, 1.0);
-		vertexColor = vec4(0.0, 1.0, 1.0, 1.0);
+		vertexColor = vec4(clamp(Pos, 0.0, 1.0), 1.0);
 	})";
 static const char* fragment = R"(
 	#version 330 core
@@ -91,12 +91,18 @@ void createShaders(const char* ShaderText_v, const char* ShaderText_f)
 
 void RenderSceneCB() //draw
 {
-	Scale += 0.0005f;
+	Scale += 0.01f;
 
 	Pipeline p;
-	p.Scale(sinf(Scale * 0.1f), sinf(Scale * 0.1f), sinf(Scale * 0.1f));
-	p.WorldPos(sinf(Scale), 0.0f, 0.0f);
-	p.Rotate(sinf(Scale) * 90.0f, sinf(Scale) * 90.0f, sinf(Scale) * 90.0f);
+	//p.Scale(sinf(Scale * 0.1f), sinf(Scale * 0.1f), sinf(Scale * 0.1f));
+	//p.WorldPos(sinf(Scale), 0.0f, 0.0f);
+	//p.Rotate(sinf(Scale) * 90.0f, sinf(Scale) * 90.0f, sinf(Scale) * 90.0f);
+
+	p.Scale(0.1f, 0.1f, 0.1f);
+	p.WorldPos(0.0f, sinf(Scale * 0.1f), sinf(Scale * 0.1f));
+	p.Rotate(Scale, Scale, Scale);
+
+	p.SetPerspectiveProj(30.0f, WINDOW_WIDTH, WINDOW_HEIGHT, 1.0f, 1000.0f);
 	glUniformMatrix4fv(gWorldLocation, 1, GL_TRUE, (const GLfloat*)p.GetTrans());
 
 
@@ -105,10 +111,11 @@ void RenderSceneCB() //draw
 	glClear(GL_COLOR_BUFFER_BIT); //clearing the frame buffer using the color specified above
 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO); // Bind the buffer, prepare it for rendering
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); // data inside the buffer
 	glEnableVertexAttribArray(0); // Enable or disable the shared array of vertex attributes
 
-	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glDrawElements(GL_TRIANGLES, 12, GL_UNSIGNED_INT, 0);
 
 	glDisableVertexAttribArray(0);
 
@@ -128,7 +135,7 @@ int main(int argc, char** argv)
 	glutInitWindowSize(1024, 768); //window parameters
 	glutInitWindowPosition(100, 100);
 	glutCreateWindow("Tutorial 01"); //create the window and give it a title
-	glClearColor(1.0f, 0.0f, 1.0f, 0.0f); //setting the color of the window
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); //setting the color of the window
 
 	glutDisplayFunc(RenderSceneCB); //GLUT interacts with window system
 	glutIdleFunc(RenderSceneCB);
@@ -142,16 +149,30 @@ int main(int argc, char** argv)
 	}
 
 
-	glm::vec3 Vertices[3]; //increased the array so that it could contain 3 vertices.
-	Vertices[0] = glm::vec3(-0.5f, -0.5f, 0.0f); // down left
-	Vertices[1] = glm::vec3(0.5f, -0.5f, 0.0f); // down right
-	Vertices[2] = glm::vec3(0.0f, 0.5f, 0.0f); // up
+	glm::vec3 Vertices[4];
+	Vertices[0] = glm::vec3(-0.5f, -0.5f, 0.0f);
+	Vertices[1] = glm::vec3(0.0f, -0.5f, 0.5f);
+	Vertices[2] = glm::vec3(0.5f, -0.5f, 0.0f);
+	Vertices[3] = glm::vec3(0.0f, 0.5f, 0.0f);
 
 
-		// buffers
+		// buffers (vertices)
 	glGenBuffers(1, &VBO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices), Vertices, GL_STATIC_DRAW);
+
+
+	unsigned int Indices[] = {
+		0, 3, 1,
+		1, 3, 2,
+		2, 3, 0,
+		0, 2, 1 };
+
+	// buffers (index array)
+	glGenBuffers(1, &IBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Indices), Indices, GL_STATIC_DRAW);
+
 
 	createShaders(vertex, fragment);
 
