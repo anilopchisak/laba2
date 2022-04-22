@@ -3,16 +3,15 @@
 #include <GL/freeglut.h> //GLUT - OpenGL Utility Library - API for managing the window system, as well as event handling, input/output control
 #include <glm/glm.hpp>	//#include "math_3d.h" - vector
 #include "Pipeline.h"
-#include "Mat4.h"
-#include "Vec3.cpp"
 
 GLuint VBO; // a global variable for storing a pointer to the vertex buffer
 GLuint IBO;
 GLuint gWorldLocation;
 float Scale = 0.0f;
+GLint success; GLchar InfoLog[1024];
 
-#define WINDOW_WIDTH 1980
-#define WINDOW_HEIGHT 1250
+constexpr auto WINDOW_WIDTH = 1980;
+constexpr auto WINDOW_HEIGHT = 1250;
 
 static const char* vertex = R"(
 	#version 330 core
@@ -21,9 +20,10 @@ static const char* vertex = R"(
 	uniform mat4 gWorld;
 	void main()
 	{
-		gl_Position = gWorld * vec4(0.5 * Pos.x, 0.5 * Pos.y, Pos.z, 1.0);
+		gl_Position = gWorld * vec4(4 * Pos.x, 4 * Pos.y, Pos.z, 1.0);
 		vertexColor = vec4(clamp(Pos, 0.0, 1.0), 1.0);
 	})";
+
 static const char* fragment = R"(
 	#version 330 core
 	out vec4 FragColor;
@@ -34,56 +34,51 @@ static const char* fragment = R"(
 	})";
 
 
-void createShaders(const char* ShaderText_v, const char* ShaderText_f)
+void checkerror(GLuint program, GLint success, GLenum ShaderType)
 {
-	GLint success; 	GLchar InfoLog[1024];
-	GLuint ShaderProgram = glCreateProgram();
+	if (!success)
+	{
+		if (ShaderType == 0)
+		{
+			glGetProgramInfoLog(program, sizeof(InfoLog), nullptr, InfoLog);
+			std::cerr << "Error compiling shader type " << static_cast<int>(ShaderType) << InfoLog << "\n";
+		}
+		else
+		{
+			glGetShaderInfoLog(program, sizeof(InfoLog), nullptr, InfoLog);
+			std::cerr << "Error linking shader program " << InfoLog << "\n";
+		}	
+	}
+}
 
+void addshader(GLuint ShaderProgram, const char* ShaderText, GLenum ShaderType)
+{
+	GLuint shader = glCreateShader(ShaderType);
 
-	// vertex shader 
-	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-
-	const GLchar* vertexShaderSource[1];
-	vertexShaderSource[0] = ShaderText_v;
-	glShaderSource(vertexShader, 1, vertexShaderSource, NULL);
-	glCompileShader(vertexShader);
+	const GLchar* ShaderSource[1];
+	ShaderSource[0] = ShaderText;
+	glShaderSource(shader, 1, ShaderSource, nullptr);
+	glCompileShader(shader);
 
 	// Checking for vertex shader compilation errors
-	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(vertexShader, sizeof(InfoLog), NULL, InfoLog);
-		fprintf(stderr, "Error compiling shader type %d: '%s'\n", GL_VERTEX_SHADER, InfoLog);
-	}
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+	checkerror(shader, success, ShaderType);
 
+	glAttachShader(ShaderProgram, shader);
+}
 
-	// fragment shader
-	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+void createShaders(const char* ShaderText_v, const char* ShaderText_f)
+{
+	
+	GLuint ShaderProgram = glCreateProgram();
+ 
+	addshader(ShaderProgram, ShaderText_v, GL_VERTEX_SHADER);
+	addshader(ShaderProgram, ShaderText_f, GL_FRAGMENT_SHADER);
 
-	const GLchar* fragmentShaderSource[1];
-	fragmentShaderSource[0] = ShaderText_f;
-	glShaderSource(fragmentShader, 1, fragmentShaderSource, NULL);
-	glCompileShader(fragmentShader);
-
-	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(fragmentShader, sizeof(InfoLog), NULL, InfoLog);
-		fprintf(stderr, "Error compiling shader type %d: '%s'\n", GL_FRAGMENT_SHADER, InfoLog);
-	}
-
-
-	// Linking Shaders
-	glAttachShader(ShaderProgram, vertexShader);
-	glAttachShader(ShaderProgram, fragmentShader);
-	glLinkProgram(ShaderProgram);
 	// Checking for shader binding errors
+	glLinkProgram(ShaderProgram);
 	glGetProgramiv(ShaderProgram, GL_LINK_STATUS, &success);
-	if (success == 0)
-	{
-		glGetProgramInfoLog(ShaderProgram, sizeof(InfoLog), NULL, InfoLog);
-		fprintf(stderr, "Error linking shader program: '%s'\n", InfoLog);
-	}
+	checkerror(ShaderProgram, success, 0);
 
 	glUseProgram(ShaderProgram);
 
@@ -93,34 +88,32 @@ void createShaders(const char* ShaderText_v, const char* ShaderText_f)
 
 void RenderSceneCB() //draw
 {
-	Scale += 0.01f;
+	glClear(GL_COLOR_BUFFER_BIT); //clearing the frame buffer using the color specified above
+
+	Scale += 0.1f;
 
 	Pipeline p;
-	//p.Scale(sinf(Scale * 0.1f), sinf(Scale * 0.1f), sinf(Scale * 0.1f));
-	//p.WorldPos(sinf(Scale), 0.0f, 0.0f);
-	//p.Rotate(sinf(Scale) * 90.0f, sinf(Scale) * 90.0f, sinf(Scale) * 90.0f);
 
 	p.Scale(0.1f, 0.1f, 0.1f);
-	p.WorldPos(0.0f, sinf(Scale * 0.1f), sinf(Scale * 0.1f));
-	p.Rotate(Scale, Scale, Scale);
-	Vec3 CameraPos(0.0f, 0.0f, -3.0f);
-	Vec3 CameraTarget(0.0f, 0.0f, 2.0f);
-	Vec3 CameraUp(0.0f, 1.0f, 0.0f);
-	p.SetCamera(CameraPos, CameraTarget, CameraUp);
+	p.WorldPos(0.0f, 0.0f, 3.0f);
+	p.Rotate(0, Scale, 0);
 
-	p.SetPerspectiveProj(30.0f, WINDOW_WIDTH, WINDOW_HEIGHT, 1.0f, 1000.0f);
-	glUniformMatrix4fv(gWorldLocation, 1, GL_TRUE, (const GLfloat*)p.GetTrans());
+	glm::vec3 CameraPos(0.0f, 0.0f, -3.0f);
+	glm::vec3 CameraTarget(0.0f, 0.0f, 2.0f);
+	glm::vec3 CameraUp(0.0f, 1.0f, 0.0f);
+	p.SetCamera(CameraPos, CameraTarget, CameraUp);
+	p.SetPerspectiveProj(60.0f, WINDOW_WIDTH, WINDOW_HEIGHT, 1.0f, 100.0f);
+
+	glUniformMatrix4fv(gWorldLocation, 1, GL_TRUE, (GLfloat*)p.GetTrans());
 
 
 	// Rendering
 
-	glClear(GL_COLOR_BUFFER_BIT); //clearing the frame buffer using the color specified above
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO); // Bind the buffer, prepare it for rendering
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); // data inside the buffer
 	glEnableVertexAttribArray(0); // Enable or disable the shared array of vertex attributes
-
+	glBindBuffer(GL_ARRAY_BUFFER, VBO); // Bind the buffer, prepare it for rendering
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); // data inside the buffer
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+	
 	glDrawElements(GL_TRIANGLES, 12, GL_UNSIGNED_INT, 0);
 
 	glDisableVertexAttribArray(0);
@@ -156,10 +149,10 @@ int main(int argc, char** argv)
 
 
 	glm::vec3 Vertices[4];
-	Vertices[0] = glm::vec3(-0.5f, -0.5f, 0.0f);
-	Vertices[1] = glm::vec3(0.0f, -0.5f, 0.5f);
-	Vertices[2] = glm::vec3(0.5f, -0.5f, 0.0f);
-	Vertices[3] = glm::vec3(0.0f, 0.5f, 0.0f);
+	Vertices[0] = glm::vec3(-1.0f, -1.0f, -1.0f);
+	Vertices[1] = glm::vec3(0.0f, -1.0f, 5.0f);
+	Vertices[2] = glm::vec3(1.0f, -1.0f, -1.0f);
+	Vertices[3] = glm::vec3(0.0f, 1.0f, 1.0f);
 
 
 		// buffers (vertices)
